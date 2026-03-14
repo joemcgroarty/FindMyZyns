@@ -1,41 +1,52 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  RefreshControl,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@/lib/supabase';
-import { Button } from '@/components/ui/Button';
-import { Product, getKarmaTier, getKarmaTierLabel } from '@/types';
+import { Profile, Product, getKarmaTier, getKarmaTierLabel } from '@/types';
 
 interface UserStats {
   shares_given: number;
   shares_received: number;
 }
 
-export default function ProfileScreen() {
-  const { profile, refreshProfile } = useAuthStore();
+export default function UserProfileScreen() {
   const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [stats, setStats] = useState<UserStats>({ shares_given: 0, shares_received: 0 });
-  const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchData = useCallback(async () => {
-    if (!profile?.id) return;
+    if (!id) return;
 
-    const [productsRes, statsRes] = await Promise.all([
-      supabase.from('products').select('*').eq('user_id', profile.id),
-      supabase.rpc('get_user_stats', { target_user_id: profile.id }),
+    const [profileRes, productsRes, statsRes] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', id).single(),
+      supabase.from('products').select('*').eq('user_id', id),
+      supabase.rpc('get_user_stats', { target_user_id: id }),
     ]);
 
+    if (profileRes.data) {
+      setProfile(profileRes.data as Profile);
+    }
     if (productsRes.data) {
       setProducts(productsRes.data as Product[]);
     }
     if (statsRes.data) {
       setStats(statsRes.data as UserStats);
     }
-  }, [profile?.id]);
+  }, [id]);
 
   useEffect(() => {
     fetchData().finally(() => setLoading(false));
@@ -43,15 +54,34 @@ export default function ProfileScreen() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refreshProfile(), fetchData()]);
+    await fetchData();
     setRefreshing(false);
-  }, [refreshProfile, fetchData]);
+  }, [fetchData]);
 
-  const karma = profile?.karma ?? 0;
+  if (loading) {
+    return (
+      <SafeAreaView className="flex-1 bg-dark items-center justify-center">
+        <ActivityIndicator color="#10B981" size="large" />
+      </SafeAreaView>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <SafeAreaView className="flex-1 bg-dark items-center justify-center px-6">
+        <Text className="text-white text-lg mb-4">User not found</Text>
+        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
+          <Text className="text-primary text-base font-semibold">Go Back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  const karma = profile.karma ?? 0;
   const tier = getKarmaTier(karma);
   const tierLabel = getKarmaTierLabel(tier);
 
-  const memberSince = profile?.created_at
+  const memberSince = profile.created_at
     ? new Date(profile.created_at).toLocaleDateString('en-US', {
         month: 'short',
         year: 'numeric',
@@ -59,11 +89,7 @@ export default function ProfileScreen() {
     : '';
 
   const renderProduct = ({ item }: { item: Product }) => (
-    <TouchableOpacity
-      onPress={() => router.push(`/product/${item.id}/edit`)}
-      className="bg-dark-100 rounded-xl p-4 mb-3 flex-row items-center"
-      activeOpacity={0.7}
-    >
+    <View className="bg-dark-100 rounded-xl p-4 mb-3 flex-row items-center">
       {item.photo_url ? (
         <Image
           source={{ uri: item.photo_url }}
@@ -81,34 +107,41 @@ export default function ProfileScreen() {
           {[item.brand, item.type, item.flavor].filter(Boolean).join(' · ')}
         </Text>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 
   const ListHeader = () => (
     <View>
+      {/* Back button */}
+      <TouchableOpacity
+        onPress={() => router.back()}
+        className="pt-4 mb-4"
+        activeOpacity={0.7}
+      >
+        <Text className="text-primary text-base font-semibold">{'< Back'}</Text>
+      </TouchableOpacity>
+
       {/* Avatar and name */}
-      <View className="items-center pt-6 pb-4">
-        <TouchableOpacity onPress={() => router.push('/profile/edit')} activeOpacity={0.7}>
-          <View className="w-24 h-24 rounded-full bg-dark-200 overflow-hidden mb-3">
-            {profile?.avatar_url ? (
-              <Image
-                source={{ uri: profile.avatar_url }}
-                className="w-full h-full"
-                contentFit="cover"
-              />
-            ) : (
-              <View className="w-full h-full items-center justify-center">
-                <Text className="text-4xl">{'👤'}</Text>
-              </View>
-            )}
-          </View>
-        </TouchableOpacity>
+      <View className="items-center pb-4">
+        <View className="w-24 h-24 rounded-full bg-dark-200 overflow-hidden mb-3">
+          {profile.avatar_url ? (
+            <Image
+              source={{ uri: profile.avatar_url }}
+              className="w-full h-full"
+              contentFit="cover"
+            />
+          ) : (
+            <View className="w-full h-full items-center justify-center">
+              <Text className="text-4xl">{'👤'}</Text>
+            </View>
+          )}
+        </View>
 
         <Text className="text-white text-xl font-bold">
-          {profile?.display_name ?? 'User'}
+          {profile.display_name ?? 'User'}
         </Text>
         <Text className="text-gray-400 text-base mb-2">
-          @{profile?.username ?? 'unknown'}
+          @{profile.username ?? 'unknown'}
         </Text>
 
         {/* Karma */}
@@ -117,17 +150,10 @@ export default function ProfileScreen() {
           <Text className="text-gray-500 mx-2">{'·'}</Text>
           <Text className="text-gray-400 text-base">{tierLabel}</Text>
         </View>
-
-        <Button
-          title="Edit Profile"
-          onPress={() => router.push('/profile/edit')}
-          variant="outline"
-          className="w-full"
-        />
       </View>
 
       {/* Stats row */}
-      <View className="flex-row bg-dark-100 rounded-xl p-4 mb-6 mt-2">
+      <View className="flex-row bg-dark-100 rounded-xl p-4 mb-6">
         <View className="flex-1 items-center">
           <Text className="text-white text-lg font-bold">{stats.shares_given}</Text>
           <Text className="text-gray-400 text-xs">Given</Text>
@@ -145,23 +171,13 @@ export default function ProfileScreen() {
       </View>
 
       {/* Products header */}
-      <View className="flex-row items-center justify-between mb-3">
-        <Text className="text-white text-lg font-bold">My Products</Text>
-        <TouchableOpacity onPress={() => router.push('/product/new')} activeOpacity={0.7}>
-          <Text className="text-primary text-base font-semibold">+ Add</Text>
-        </TouchableOpacity>
-      </View>
+      <Text className="text-white text-lg font-bold mb-3">Products</Text>
     </View>
   );
 
   const EmptyProducts = () => (
     <View className="items-center py-12">
-      <Text className="text-gray-500 text-base mb-4">No products added yet</Text>
-      <Button
-        title="+ Add Product"
-        onPress={() => router.push('/product/new')}
-        variant="secondary"
-      />
+      <Text className="text-gray-500 text-base">No products added yet</Text>
     </View>
   );
 
@@ -172,7 +188,7 @@ export default function ProfileScreen() {
         renderItem={renderProduct}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={ListHeader}
-        ListEmptyComponent={!loading ? EmptyProducts : null}
+        ListEmptyComponent={EmptyProducts}
         contentContainerClassName="px-6 pb-8"
         refreshControl={
           <RefreshControl
