@@ -1,13 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, Platform } from 'react-native';
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusFAB } from '@/components/map/StatusFAB';
+import { SharerMarker } from '@/components/map/SharerPin';
+import { SharerCard } from '@/components/map/SharerCard';
+import { StoreMarker } from '@/components/map/StoreMarker';
+import { StoreCard } from '@/components/map/StoreCard';
 import { useStatusStore } from '@/stores/useStatusStore';
+import { useMapStore } from '@/stores/useMapStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Button } from '@/components/ui/Button';
 import { APP_CONFIG } from '@/constants/config';
+import { SharerPin, StorePin } from '@/types';
 
 const darkMapStyle = [
   { elementType: 'geometry', stylers: [{ color: '#1d1d1d' }] },
@@ -21,11 +27,16 @@ const darkMapStyle = [
 export default function MapScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<string | null>(null);
+  const [selectedSharer, setSelectedSharer] = useState<SharerPin | null>(null);
+  const [selectedStore, setSelectedStore] = useState<StorePin | null>(null);
   const lastBroadcast = useRef<{ lat: number; lng: number } | null>(null);
+  const currentRegion = useRef<{ lat: number; lng: number } | null>(null);
   const { status, updateLocation } = useStatusStore();
+  const { nearbySharers, nearbyStores, fetchNearbySharers, fetchNearbyStores, subscribeToMapUpdates } = useMapStore();
   const { profile } = useAuthStore();
   const mapRef = useRef<MapView>(null);
 
+  // Request location permission
   useEffect(() => {
     (async () => {
       const { status: perm } = await Location.requestForegroundPermissionsAsync();
@@ -35,9 +46,33 @@ export default function MapScreen() {
           accuracy: Location.Accuracy.Balanced,
         });
         setLocation(loc);
+        currentRegion.current = {
+          lat: loc.coords.latitude,
+          lng: loc.coords.longitude,
+        };
+        // Initial fetch
+        await fetchNearbySharers(loc.coords.latitude, loc.coords.longitude);
+        await fetchNearbyStores(loc.coords.latitude, loc.coords.longitude);
       }
     })();
   }, []);
+
+  // Subscribe to realtime map updates
+  useEffect(() => {
+    const unsubscribe = subscribeToMapUpdates();
+    return unsubscribe;
+  }, []);
+
+  // Periodic refetch every 30 seconds
+  useEffect(() => {
+    if (!currentRegion.current) return;
+    const interval = setInterval(() => {
+      if (currentRegion.current) {
+        fetchNearbySharers(currentRegion.current.lat, currentRegion.current.lng);
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [location]);
 
   // Location broadcasting when sharing
   useEffect(() => {
@@ -77,6 +112,27 @@ export default function MapScreen() {
 
     return () => clearInterval(interval);
   }, [status, permissionStatus]);
+
+  const handleRegionChange = useCallback(
+    (region: Region) => {
+      if (!currentRegion.current) {
+        currentRegion.current = { lat: region.latitude, lng: region.longitude };
+        return;
+      }
+      const dist = getDistance(
+        currentRegion.current.lat,
+        currentRegion.current.lng,
+        region.latitude,
+        region.longitude,
+      );
+      if (dist > 2000) {
+        currentRegion.current = { lat: region.latitude, lng: region.longitude };
+        fetchNearbySharers(region.latitude, region.longitude);
+        fetchNearbyStores(region.latitude, region.longitude);
+      }
+    },
+    [fetchNearbySharers],
+  );
 
   if (permissionStatus === null) {
     return (
@@ -129,13 +185,50 @@ export default function MapScreen() {
                 longitudeDelta: 0.05,
               }
         }
-      />
+        onRegionChangeComplete={handleRegionChange}
+        onPress={() => { setSelectedSharer(null); setSelectedStore(null); }}
+      >
+        {nearbySharers.map((sharer) => (
+          <SharerMarker
+            key={sharer.id}
+            sharer={sharer}
+            onPress={(s) => {
+              setSelectedStore(null);
+              setSelectedSharer(s);
+            }}
+          />
+        ))}
+        {nearbyStores.map((store) => (
+          <StoreMarker
+            key={store.place_id}
+            store={store}
+            onPress={(s) => {
+              setSelectedSharer(null);
+              setSelectedStore(s);
+            }}
+          />
+        ))}
+      </MapView>
+
+      {selectedSharer && (
+        <SharerCard
+          sharer={selectedSharer}
+          onClose={() => setSelectedSharer(null)}
+        />
+      )}
+
+      {selectedStore && (
+        <StoreCard
+          store={selectedStore}
+          onClose={() => setSelectedStore(null)}
+        />
+      )}
+
       <StatusFAB />
     </View>
   );
 }
 
-// Haversine distance in meters
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371000;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
