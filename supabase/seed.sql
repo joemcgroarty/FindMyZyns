@@ -1,0 +1,19 @@
+-- Seed data is inserted via Supabase Auth API and client SDK during development.
+-- This file serves as documentation of the expected test data shape.
+--
+-- Test users should be created via supabase.auth.signUp() in a seed script,
+-- which will trigger the handle_new_user() function to create profiles.
+--
+-- After auth users exist, populate profiles and products:
+--
+-- UPDATE public.profiles SET
+--   username = 'testuser1',
+--   display_name = 'Test User 1',
+--   karma = 42,
+--   status = 'sharing'
+-- WHERE id = '<user-1-id>';
+--
+-- INSERT INTO public.products (user_id, name, brand, type, flavor, strength)
+-- VALUES
+--   ('<user-1-id>', 'Zyn Cool Mint', 'Zyn', 'pouches', 'Cool Mint', '6mg'),
+--   ('<user-1-id>', 'Velo Citrus', 'Velo', 'pouches', 'Citrus', '4mg');
