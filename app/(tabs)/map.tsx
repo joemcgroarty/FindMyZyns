@@ -8,9 +8,11 @@ import { SharerMarker } from '@/components/map/SharerPin';
 import { SharerCard } from '@/components/map/SharerCard';
 import { StoreMarker } from '@/components/map/StoreMarker';
 import { StoreCard } from '@/components/map/StoreCard';
+import { ConnectionAlert } from '@/components/connection/ConnectionAlert';
 import { useStatusStore } from '@/stores/useStatusStore';
 import { useMapStore } from '@/stores/useMapStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useConnectionStore } from '@/stores/useConnectionStore';
 import { Button } from '@/components/ui/Button';
 import { APP_CONFIG } from '@/constants/config';
 import { SharerPin, StorePin } from '@/types';
@@ -34,6 +36,7 @@ export default function MapScreen() {
   const { status, updateLocation } = useStatusStore();
   const { nearbySharers, nearbyStores, fetchNearbySharers, fetchNearbyStores, subscribeToMapUpdates } = useMapStore();
   const { profile } = useAuthStore();
+  const { fetchPendingRequests } = useConnectionStore();
   const mapRef = useRef<MapView>(null);
 
   // Request location permission
@@ -61,6 +64,11 @@ export default function MapScreen() {
   useEffect(() => {
     const unsubscribe = subscribeToMapUpdates();
     return unsubscribe;
+  }, []);
+
+  // Fetch pending connection requests on mount
+  useEffect(() => {
+    fetchPendingRequests();
   }, []);
 
   // Periodic refetch every 30 seconds
@@ -225,6 +233,8 @@ export default function MapScreen() {
       )}
 
       <StatusFAB />
+
+      <ConnectionAlert />
     </View>
   );
 }

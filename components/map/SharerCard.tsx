@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { SharerPin, getKarmaTier, getKarmaTierLabel } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { useStatusStore } from '@/stores/useStatusStore';
+import { useConnectionStore } from '@/stores/useConnectionStore';
 
 const tierColors = {
   newcomer: '#EF4444',
@@ -21,6 +23,8 @@ interface SharerCardProps {
 export function SharerCard({ sharer, onClose }: SharerCardProps) {
   const router = useRouter();
   const { status } = useStatusStore();
+  const { createConnection, isConnecting } = useConnectionStore();
+  const [requestSent, setRequestSent] = useState(false);
   const tier = getKarmaTier(sharer.karma);
   const tierLabel = getKarmaTierLabel(tier);
 
@@ -95,10 +99,13 @@ export function SharerCard({ sharer, onClose }: SharerCardProps) {
         {status === 'needing' && (
           <View className="flex-1">
             <Button
-              title="Connect"
-              onPress={() => {
-                // Connection flow comes in Sprint 4
+              title={requestSent ? 'Request Sent' : 'Connect'}
+              onPress={async () => {
+                const conn = await createConnection(sharer.id);
+                if (conn) setRequestSent(true);
               }}
+              loading={isConnecting}
+              disabled={requestSent || isConnecting}
             />
           </View>
         )}
