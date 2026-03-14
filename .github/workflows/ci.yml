@@ -19,3 +19,5 @@ jobs:
       - run: npx eslint . --max-warnings 0
       - run: npx tsc --noEmit
       - run: npx vitest run --passWithNoTests
+      - name: Security audit
+        run: npx tsx scripts/security-audit.ts
