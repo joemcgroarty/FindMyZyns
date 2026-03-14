@@ -9,6 +9,8 @@ import { SharerCard } from '@/components/map/SharerCard';
 import { StoreMarker } from '@/components/map/StoreMarker';
 import { StoreCard } from '@/components/map/StoreCard';
 import { ConnectionAlert } from '@/components/connection/ConnectionAlert';
+import { SearchBar } from '@/components/map/SearchBar';
+import { ActiveConnectionBanner } from '@/components/connection/ActiveConnectionBanner';
 import { useStatusStore } from '@/stores/useStatusStore';
 import { useMapStore } from '@/stores/useMapStore';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -168,8 +170,28 @@ export default function MapScreen() {
     );
   }
 
+  const handleSearchLocation = useCallback(
+    (lat: number, lng: number) => {
+      mapRef.current?.animateToRegion(
+        {
+          latitude: lat,
+          longitude: lng,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        },
+        500,
+      );
+      currentRegion.current = { lat, lng };
+      fetchNearbySharers(lat, lng);
+      fetchNearbyStores(lat, lng);
+    },
+    [fetchNearbySharers, fetchNearbyStores],
+  );
+
   return (
     <View className="flex-1 bg-dark">
+      <SearchBar onSelectLocation={handleSearchLocation} />
+      <ActiveConnectionBanner />
       <MapView
         ref={mapRef}
         style={{ flex: 1 }}

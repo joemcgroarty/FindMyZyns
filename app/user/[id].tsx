@@ -6,12 +6,15 @@ import {
   RefreshControl,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { Profile, Product, getKarmaTier, getKarmaTierLabel } from '@/types';
+import { blockUser } from '@/lib/moderation';
+import { ReportModal } from '@/components/moderation/ReportModal';
 
 interface UserStats {
   shares_given: number;
@@ -27,6 +30,8 @@ export default function UserProfileScreen() {
   const [stats, setStats] = useState<UserStats>({ shares_given: 0, shares_received: 0 });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!id) return;
@@ -57,6 +62,35 @@ export default function UserProfileScreen() {
     await fetchData();
     setRefreshing(false);
   }, [fetchData]);
+
+  const handleBlock = () => {
+    if (!id || !profile) return;
+    setShowMenu(false);
+    Alert.alert(
+      'Block User',
+      `Are you sure you want to block @${profile.username ?? 'this user'}? They won't be able to see your profile or connect with you.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Block',
+          style: 'destructive',
+          onPress: async () => {
+            const success = await blockUser(id);
+            if (success) {
+              Alert.alert('User Blocked', 'This user has been blocked.', [
+                { text: 'OK', onPress: () => router.back() },
+              ]);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleReport = () => {
+    setShowMenu(false);
+    setShowReport(true);
+  };
 
   if (loading) {
     return (
@@ -112,14 +146,42 @@ export default function UserProfileScreen() {
 
   const ListHeader = () => (
     <View>
-      {/* Back button */}
-      <TouchableOpacity
-        onPress={() => router.back()}
-        className="pt-4 mb-4"
-        activeOpacity={0.7}
-      >
-        <Text className="text-primary text-base font-semibold">{'< Back'}</Text>
-      </TouchableOpacity>
+      {/* Header with back button and overflow menu */}
+      <View className="flex-row items-center justify-between pt-4 mb-4">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
+          <Text className="text-primary text-base font-semibold">{'< Back'}</Text>
+        </TouchableOpacity>
+
+        <View className="relative">
+          <TouchableOpacity
+            onPress={() => setShowMenu(!showMenu)}
+            activeOpacity={0.7}
+            className="px-2 py-1"
+          >
+            <Text className="text-gray-400 text-xl font-bold">{'\u22EF'}</Text>
+          </TouchableOpacity>
+
+          {showMenu && (
+            <View className="absolute top-8 right-0 bg-dark-200 rounded-xl overflow-hidden z-50 w-44 shadow-lg">
+              <TouchableOpacity
+                onPress={handleBlock}
+                className="px-4 py-3 border-b border-dark-300"
+              >
+                <Text className="text-white text-sm">Block User</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleReport}
+                className="px-4 py-3"
+              >
+                <Text className="text-danger text-sm">Report User</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+      </View>
 
       {/* Avatar and name */}
       <View className="items-center pb-4">
@@ -197,6 +259,13 @@ export default function UserProfileScreen() {
             tintColor="#10B981"
           />
         }
+      />
+
+      <ReportModal
+        visible={showReport}
+        onClose={() => setShowReport(false)}
+        reportedUserId={id ?? ''}
+        reportedUsername={profile.username ?? 'unknown'}
       />
     </SafeAreaView>
   );

@@ -1,13 +1,20 @@
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
+import { useState } from 'react';
+import { View, Text, TouchableOpacity, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/Button';
+import { SafetyGuidelinesModal } from '@/components/safety/SafetyGuidelinesModal';
 
 const APP_VERSION = '1.0.0';
+const TERMS_URL = 'https://findmyzyns.com/terms';
+const PRIVACY_URL = 'https://findmyzyns.com/privacy';
 
 export default function SettingsScreen() {
   const { signOut, profile } = useAuthStore();
+  const router = useRouter();
+  const [showSafety, setShowSafety] = useState(false);
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -40,6 +47,32 @@ export default function SettingsScreen() {
     );
   };
 
+  const SettingsRow = ({
+    label,
+    subtitle,
+    onPress,
+    showChevron = true,
+  }: {
+    label: string;
+    subtitle?: string;
+    onPress: () => void;
+    showChevron?: boolean;
+  }) => (
+    <TouchableOpacity
+      className="bg-dark-100 rounded-xl p-4 mb-3 flex-row items-center justify-between"
+      activeOpacity={0.7}
+      onPress={onPress}
+    >
+      <View className="flex-1">
+        <Text className="text-white text-base font-medium">{label}</Text>
+        {subtitle && (
+          <Text className="text-gray-400 text-sm mt-0.5">{subtitle}</Text>
+        )}
+      </View>
+      {showChevron && <Text className="text-gray-500 text-base">{'>'}</Text>}
+    </TouchableOpacity>
+  );
+
   return (
     <SafeAreaView className="flex-1 bg-dark">
       <View className="flex-1 px-6 pt-4">
@@ -53,16 +86,40 @@ export default function SettingsScreen() {
         </View>
 
         {/* Notification Preferences */}
-        <TouchableOpacity
-          className="bg-dark-100 rounded-xl p-4 mb-6 flex-row items-center justify-between"
-          activeOpacity={0.7}
-        >
-          <View>
-            <Text className="text-white text-base font-medium">Notification Preferences</Text>
-            <Text className="text-gray-400 text-sm mt-0.5">Coming soon</Text>
-          </View>
-          <Text className="text-gray-500 text-base">{'>'}</Text>
-        </TouchableOpacity>
+        <SettingsRow
+          label="Notification Preferences"
+          subtitle="Coming soon"
+          onPress={() => {}}
+        />
+
+        {/* Blocked Users */}
+        <SettingsRow
+          label="Blocked Users"
+          subtitle="Manage blocked users"
+          onPress={() => router.push('/settings/blocked')}
+        />
+
+        {/* Safety Tips */}
+        <SettingsRow
+          label="Safety Tips"
+          subtitle="Review safety guidelines"
+          onPress={() => setShowSafety(true)}
+        />
+
+        {/* Legal section */}
+        <Text className="text-gray-500 text-xs uppercase font-semibold mt-4 mb-2 ml-1">
+          Legal
+        </Text>
+
+        <SettingsRow
+          label="Terms of Service"
+          onPress={() => Linking.openURL(TERMS_URL)}
+        />
+
+        <SettingsRow
+          label="Privacy Policy"
+          onPress={() => Linking.openURL(PRIVACY_URL)}
+        />
 
         <View className="mt-auto pb-12">
           <Button
@@ -84,6 +141,11 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </View>
+
+      <SafetyGuidelinesModal
+        visible={showSafety}
+        onAcknowledge={() => setShowSafety(false)}
+      />
     </SafeAreaView>
   );
 }
