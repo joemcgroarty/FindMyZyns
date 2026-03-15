@@ -1,7 +1,17 @@
 import { create } from 'zustand';
+import { Platform } from 'react-native';
 import { Product } from '@/types';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from './useAuthStore';
+
+// Persist status in localStorage on web so it survives refresh
+function getSavedStatus(): 'offline' | 'sharing' | 'needing' {
+  try {
+    const saved = typeof window !== 'undefined' ? window.localStorage?.getItem('fmz_status') : null;
+    if (saved === 'sharing' || saved === 'needing') return saved;
+  } catch {}
+  return 'offline';
+}
 
 interface StatusState {
   status: 'offline' | 'sharing' | 'needing';
@@ -12,7 +22,7 @@ interface StatusState {
 }
 
 export const useStatusStore = create<StatusState>((set, get) => ({
-  status: 'offline',
+  status: getSavedStatus(),
   sharingProduct: null,
   setSharingProduct: (product) => set({ sharingProduct: product }),
 
@@ -30,8 +40,18 @@ export const useStatusStore = create<StatusState>((set, get) => ({
       update.sharing_product_id = null;
     }
 
-    await supabase.from('profiles').update(update).eq('id', userId);
+    const { error } = await supabase.from('profiles').update(update).eq('id', userId);
+    if (error) {
+      console.error('Failed to update status:', error.message);
+      return;
+    }
     set({ status });
+    // Persist to localStorage on web
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage?.setItem('fmz_status', status);
+      }
+    } catch {}
   },
 
   updateLocation: async (lat, lng) => {

@@ -22,7 +22,7 @@ export default function MapScreen() {
   const [selectedStore, setSelectedStore] = useState<StorePin | null>(null);
   const lastBroadcast = useRef<{ lat: number; lng: number } | null>(null);
   const currentRegion = useRef<{ lat: number; lng: number } | null>(null);
-  const { status, updateLocation } = useStatusStore();
+  const { status, updateLocation, setStatus: setLocalStatus } = useStatusStore();
   const { nearbySharers, nearbyStores, fetchNearbySharers, fetchNearbyStores, subscribeToMapUpdates } = useMapStore();
   const { profile } = useAuthStore();
   const { fetchPendingRequests } = useConnectionStore();
@@ -140,6 +140,7 @@ export default function MapScreen() {
           longitude={location.longitude}
           sharers={nearbySharers}
           stores={nearbyStores}
+          status={status}
           onSharerPress={(s) => { setSelectedStore(null); setSelectedSharer(s); }}
           onStorePress={(s) => { setSelectedSharer(null); setSelectedStore(s); }}
           onRegionChange={handleRegionChange}
@@ -151,6 +152,39 @@ export default function MapScreen() {
       )}
       {selectedStore && (
         <StoreCard store={selectedStore} onClose={() => setSelectedStore(null)} />
+      )}
+
+      {status !== 'offline' && (
+        <View style={{
+          position: 'absolute',
+          bottom: 80,
+          left: 0,
+          right: 0,
+          alignItems: 'center',
+          zIndex: 999,
+        }}>
+          <View style={{
+            backgroundColor: status === 'sharing' ? '#10B981' : '#F59E0B',
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            borderRadius: 20,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}>
+            <View style={{
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: '#fff',
+              marginRight: 8,
+            }} />
+            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}>
+              {status === 'sharing'
+                ? `You are sharing — visible to others nearby`
+                : `You are needing — browse the map for sharers`}
+            </Text>
+          </View>
+        </View>
       )}
 
       <StatusFAB />

@@ -8,7 +8,7 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
   document.head.appendChild(link);
 }
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -76,7 +76,14 @@ export default function RootLayout() {
     };
   }, []);
 
-  if (isLoading) {
+  // Timeout fallback — never show loading for more than 3 seconds
+  const [timedOut, setTimedOut] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setTimedOut(true), 3000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isLoading && !timedOut) {
     return <LoadingScreen message="Loading..." />;
   }
 

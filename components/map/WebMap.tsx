@@ -22,6 +22,7 @@ interface WebMapProps {
   longitude: number;
   sharers: SharerPin[];
   stores: StorePin[];
+  status: 'offline' | 'sharing' | 'needing';
   onSharerPress: (sharer: SharerPin) => void;
   onStorePress: (store: StorePin) => void;
   onRegionChange: (lat: number, lng: number) => void;
@@ -32,6 +33,7 @@ export function WebMap({
   longitude,
   sharers,
   stores,
+  status,
   onSharerPress,
   onStorePress,
   onRegionChange,
@@ -46,6 +48,17 @@ export function WebMap({
     html: '<div style="width:32px;height:32px;border-radius:50%;background:#10B981;border:3px solid #fff;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:14px;">Z</div>',
     iconSize: [32, 32],
     iconAnchor: [16, 16],
+  });
+
+  const youAreHereIcon = L.divIcon({
+    className: 'custom-marker',
+    html: `<div style="position:relative;width:20px;height:20px;">
+      <div style="position:absolute;inset:0;border-radius:50%;background:${status === 'sharing' ? '#10B981' : status === 'needing' ? '#F59E0B' : '#6B7280'};opacity:0.3;animation:pulse 2s infinite;"></div>
+      <div style="position:absolute;inset:4px;border-radius:50%;background:${status === 'sharing' ? '#10B981' : status === 'needing' ? '#F59E0B' : '#fff'};border:2px solid #fff;"></div>
+    </div>
+    <style>@keyframes pulse{0%,100%{transform:scale(1);opacity:0.3}50%{transform:scale(2);opacity:0}}</style>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
   });
 
   const storeIcon = L.divIcon({
@@ -82,6 +95,20 @@ export function WebMap({
         attribution='&copy; <a href="https://carto.com/">CARTO</a>'
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
       />
+
+      {/* Your location marker */}
+      <Marker
+        key={`you-${status}`}
+        position={[latitude, longitude]}
+        icon={youAreHereIcon}
+      >
+        <Popup>
+          <div style={{ color: '#fff', background: '#1A1A1A', padding: 8, borderRadius: 8 }}>
+            <strong>You are here</strong>
+            {status !== 'offline' && <><br/>{status === 'sharing' ? 'Sharing — visible to others' : 'Needing — browsing for sharers'}</>}
+          </div>
+        </Popup>
+      </Marker>
 
       {sharers.map((sharer) => (
         <Marker

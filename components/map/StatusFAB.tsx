@@ -55,7 +55,8 @@ export function StatusFAB() {
     <>
       <TouchableOpacity
         onPress={() => setShowModal(true)}
-        className={`absolute bottom-6 right-6 ${config.color} px-5 py-3 rounded-full shadow-lg flex-row items-center`}
+        style={{ position: 'absolute', bottom: 24, right: 24, zIndex: 1000, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 9999 }}
+        className={`${config.color} shadow-lg`}
         activeOpacity={0.8}
       >
         <View className={`w-2.5 h-2.5 rounded-full mr-2 ${status === 'offline' ? 'bg-gray-500' : status === 'sharing' ? 'bg-white' : 'bg-dark'}`} />
@@ -68,7 +69,10 @@ export function StatusFAB() {
           activeOpacity={1}
           onPress={() => { setShowModal(false); setShowProducts(false); }}
         >
-          <View className="mt-auto bg-dark-100 rounded-t-3xl p-6 pb-12">
+          <View
+            className="mt-auto bg-dark-100 rounded-t-3xl p-6 pb-12"
+            onStartShouldSetResponder={() => true}
+          >
             {!showProducts ? (
               <>
                 <Text className="text-white text-lg font-bold mb-4">Set your status</Text>
