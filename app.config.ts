@@ -26,6 +26,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         'FindMyZyns accesses your photos to set a profile picture.',
     },
   },
+  web: {
+    favicon: './assets/favicon.png',
+    bundler: 'metro',
+    output: 'single',
+  },
   android: {
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
