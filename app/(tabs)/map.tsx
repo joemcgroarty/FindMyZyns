@@ -21,6 +21,7 @@ export default function MapScreen() {
   const [selectedSharer, setSelectedSharer] = useState<SharerPin | null>(null);
   const [selectedStore, setSelectedStore] = useState<StorePin | null>(null);
   const lastBroadcast = useRef<{ lat: number; lng: number } | null>(null);
+  const currentRegion = useRef<{ lat: number; lng: number } | null>(null);
   const { status, updateLocation } = useStatusStore();
   const { nearbySharers, nearbyStores, fetchNearbySharers, fetchNearbyStores, subscribeToMapUpdates } = useMapStore();
   const { profile } = useAuthStore();
@@ -36,6 +37,7 @@ export default function MapScreen() {
       (pos) => {
         setLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
         setPermissionStatus('granted');
+        currentRegion.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         fetchNearbySharers(pos.coords.latitude, pos.coords.longitude);
         fetchNearbyStores(pos.coords.latitude, pos.coords.longitude);
       },
@@ -56,16 +58,18 @@ export default function MapScreen() {
 
   // Periodic refetch
   useEffect(() => {
-    if (!location) return;
+    if (!currentRegion.current) return;
     const interval = setInterval(() => {
-      if (location) fetchNearbySharers(location.latitude, location.longitude);
+      if (currentRegion.current) {
+        fetchNearbySharers(currentRegion.current.lat, currentRegion.current.lng);
+      }
     }, 30000);
     return () => clearInterval(interval);
-  }, [location]);
+  }, [permissionStatus]);
 
   // Location broadcasting when sharing
   useEffect(() => {
-    if (status !== 'sharing' || !location) return;
+    if (status !== 'sharing' || !currentRegion.current) return;
     const interval = setInterval(() => {
       navigator.geolocation.getCurrentPosition(async (pos) => {
         const { latitude, longitude } = pos.coords;
@@ -85,13 +89,20 @@ export default function MapScreen() {
     });
 
     return () => clearInterval(interval);
-  }, [status, location]);
+  }, [status, permissionStatus]);
 
   const handleRegionChange = useCallback(
     (lat: number, lng: number) => {
-      setLocation({ latitude: lat, longitude: lng });
-      fetchNearbySharers(lat, lng);
-      fetchNearbyStores(lat, lng);
+      if (!currentRegion.current) {
+        currentRegion.current = { lat, lng };
+        return;
+      }
+      const dist = getDistance(currentRegion.current.lat, currentRegion.current.lng, lat, lng);
+      if (dist > 2000) {
+        currentRegion.current = { lat, lng };
+        fetchNearbySharers(lat, lng);
+        fetchNearbyStores(lat, lng);
+      }
     },
     [],
   );

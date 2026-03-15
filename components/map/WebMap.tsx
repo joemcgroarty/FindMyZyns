@@ -1,13 +1,11 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { View, Text, Platform } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 import { SharerPin, StorePin } from '@/types';
 
-// Only import leaflet on web
 let MapContainer: any;
 let TileLayer: any;
 let Marker: any;
 let Popup: any;
-let useMap: any;
 let L: any;
 
 if (Platform.OS === 'web') {
@@ -16,7 +14,6 @@ if (Platform.OS === 'web') {
   TileLayer = RL.TileLayer;
   Marker = RL.Marker;
   Popup = RL.Popup;
-  useMap = RL.useMap;
   L = require('leaflet');
 }
 
@@ -30,14 +27,6 @@ interface WebMapProps {
   onRegionChange: (lat: number, lng: number) => void;
 }
 
-function MapController({ center }: { center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => {
-    map.setView(center, map.getZoom());
-  }, [center]);
-  return null;
-}
-
 export function WebMap({
   latitude,
   longitude,
@@ -47,6 +36,9 @@ export function WebMap({
   onStorePress,
   onRegionChange,
 }: WebMapProps) {
+  const initialized = useRef(false);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   if (Platform.OS !== 'web') return null;
 
   const sharerIcon = L.divIcon({
@@ -69,9 +61,20 @@ export function WebMap({
       zoom={15}
       style={{ height: '100%', width: '100%' }}
       whenReady={(map: any) => {
+        // Skip the initial moveend that fires on map load
+        setTimeout(() => {
+          initialized.current = true;
+        }, 1000);
+
         map.target.on('moveend', () => {
-          const center = map.target.getCenter();
-          onRegionChange(center.lat, center.lng);
+          if (!initialized.current) return;
+
+          // Debounce region changes to prevent rapid re-renders
+          if (debounceTimer.current) clearTimeout(debounceTimer.current);
+          debounceTimer.current = setTimeout(() => {
+            const center = map.target.getCenter();
+            onRegionChange(center.lat, center.lng);
+          }, 500);
         });
       }}
     >
@@ -79,16 +82,13 @@ export function WebMap({
         attribution='&copy; <a href="https://carto.com/">CARTO</a>'
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
       />
-      <MapController center={[latitude, longitude]} />
 
       {sharers.map((sharer) => (
         <Marker
           key={sharer.id}
           position={[sharer.latitude, sharer.longitude]}
           icon={sharerIcon}
-          eventHandlers={{
-            click: () => onSharerPress(sharer),
-          }}
+          eventHandlers={{ click: () => onSharerPress(sharer) }}
         >
           <Popup>
             <div style={{ color: '#fff', background: '#1A1A1A', padding: 8, borderRadius: 8 }}>
@@ -104,9 +104,7 @@ export function WebMap({
           key={store.place_id}
           position={[store.latitude, store.longitude]}
           icon={storeIcon}
-          eventHandlers={{
-            click: () => onStorePress(store),
-          }}
+          eventHandlers={{ click: () => onStorePress(store) }}
         >
           <Popup>
             <div style={{ color: '#fff', background: '#1A1A1A', padding: 8, borderRadius: 8 }}>

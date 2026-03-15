@@ -1,4 +1,13 @@
 import '../global.css';
+import { Platform } from 'react-native';
+
+// Load Leaflet CSS on web
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+  document.head.appendChild(link);
+}
 import { useEffect, useRef } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -40,7 +49,7 @@ export default function RootLayout() {
         router.replace('/(tabs)/map');
       }
     }
-  }, [session, profile, isLoading, segments]);
+  }, [session, profile, isLoading]);
 
   // Push notification registration (FMZ-701)
   useEffect(() => {

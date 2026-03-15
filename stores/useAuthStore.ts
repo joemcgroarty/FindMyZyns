@@ -31,7 +31,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signUp: async (email, password) => {
     set({ error: null });
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: undefined },
+    });
     if (error) {
       const message = error.message === 'User already registered'
         ? 'An account with this email already exists'
@@ -39,6 +43,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ error: message });
       return { success: false, error: message };
     }
+    // If we got a session back (email confirmation disabled), sign in immediately
+    if (data.session) {
+      set({ session: data.session });
+      await get().refreshProfile();
+      return { success: true, confirmed: true } as any;
+    }
+    // Email confirmation required — show the "check your email" screen
     return { success: true };
   },
 
