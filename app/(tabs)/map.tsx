@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, Platform } from 'react-native';
+import { View, Text, Platform, TouchableOpacity } from 'react-native';
 import { StatusFAB } from '@/components/map/StatusFAB';
 import { SharerCard } from '@/components/map/SharerCard';
 import { StoreCard } from '@/components/map/StoreCard';
@@ -20,10 +20,18 @@ export default function MapScreen() {
   const [permissionStatus, setPermissionStatus] = useState<string | null>(null);
   const [selectedSharer, setSelectedSharer] = useState<SharerPin | null>(null);
   const [selectedStore, setSelectedStore] = useState<StorePin | null>(null);
+  const [showStores, setShowStores] = useState(() => {
+    try {
+      return typeof window !== 'undefined' ? window.localStorage?.getItem('fmz_showStores') !== 'false' : true;
+    } catch { return true; }
+  });
   const lastBroadcast = useRef<{ lat: number; lng: number } | null>(null);
   const currentRegion = useRef<{ lat: number; lng: number } | null>(null);
   const { status, updateLocation, setStatus: setLocalStatus } = useStatusStore();
   const { nearbySharers, nearbyStores, fetchNearbySharers, fetchNearbyStores, subscribeToMapUpdates } = useMapStore();
+
+  const handleSharerPress = useCallback((s: SharerPin) => { setSelectedStore(null); setSelectedSharer(s); }, []);
+  const handleStorePress = useCallback((s: StorePin) => { setSelectedSharer(null); setSelectedStore(s); }, []);
   const { profile } = useAuthStore();
   const { fetchPendingRequests } = useConnectionStore();
 
@@ -35,11 +43,16 @@ export default function MapScreen() {
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+        const { latitude, longitude } = pos.coords;
+        setLocation({ latitude, longitude });
         setPermissionStatus('granted');
-        currentRegion.current = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        fetchNearbySharers(pos.coords.latitude, pos.coords.longitude);
-        fetchNearbyStores(pos.coords.latitude, pos.coords.longitude);
+        currentRegion.current = { lat: latitude, lng: longitude };
+        // Fetch immediately, then retry multiple times as auth session restores
+        fetchNearbySharers(latitude, longitude);
+        fetchNearbyStores(latitude, longitude);
+        setTimeout(() => fetchNearbySharers(latitude, longitude), 2000);
+        setTimeout(() => fetchNearbySharers(latitude, longitude), 5000);
+        setTimeout(() => fetchNearbySharers(latitude, longitude), 10000);
       },
       () => setPermissionStatus('denied'),
       { enableHighAccuracy: false },
@@ -131,6 +144,45 @@ export default function MapScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#0A0A0A', position: 'relative' }}>
+      {/* Logo */}
+      <View style={{
+        position: 'absolute',
+        top: 16,
+        left: 0,
+        right: 0,
+        zIndex: 1001,
+        alignItems: 'center',
+        pointerEvents: 'none',
+      }}>
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <Text style={{ color: '#10B981', fontSize: 40, fontWeight: '900', letterSpacing: 1, lineHeight: 48 }}>
+            Find
+          </Text>
+          <Text style={{ color: '#fff', fontSize: 40, fontWeight: '900', letterSpacing: 1, lineHeight: 48 }}>
+            My
+          </Text>
+          <View style={{
+            backgroundColor: '#10B981',
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderRadius: 10,
+            marginLeft: 4,
+            justifyContent: 'center',
+          }}>
+            <Text style={{ color: '#fff', fontSize: 40, fontWeight: '900', letterSpacing: 3, lineHeight: 48 }}>
+              ZYNS
+            </Text>
+          </View>
+        </View>
+        <Text style={{ color: '#9CA3AF', fontSize: 11, marginTop: 8, letterSpacing: 1 }}>
+          ending male loneliness one pouch at a time
+        </Text>
+      </View>
+
       <SearchBar onSelectLocation={(lat, lng) => handleRegionChange(lat, lng)} />
       <ActiveConnectionBanner />
 
@@ -139,13 +191,40 @@ export default function MapScreen() {
           latitude={location.latitude}
           longitude={location.longitude}
           sharers={nearbySharers}
-          stores={nearbyStores}
+          stores={showStores ? nearbyStores : []}
           status={status}
-          onSharerPress={(s) => { setSelectedStore(null); setSelectedSharer(s); }}
-          onStorePress={(s) => { setSelectedSharer(null); setSelectedStore(s); }}
+          onSharerPress={handleSharerPress}
+          onStorePress={handleStorePress}
           onRegionChange={handleRegionChange}
         />
       )}
+
+      {/* Store toggle button */}
+      <TouchableOpacity
+        onPress={() => {
+          const next = !showStores;
+          setShowStores(next);
+          try { if (typeof window !== 'undefined') window.localStorage?.setItem('fmz_showStores', String(next)); } catch {}
+        }}
+        style={{
+          position: 'absolute',
+          top: 70,
+          right: 16,
+          zIndex: 1000,
+          backgroundColor: showStores ? '#3B82F6' : '#2A2A2A',
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+          borderRadius: 20,
+          flexDirection: 'row',
+          alignItems: 'center',
+        }}
+        activeOpacity={0.7}
+      >
+        <Text style={{ fontSize: 14, marginRight: 6 }}>{'\uD83D\uDECD\uFE0F'}</Text>
+        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
+          Stores {showStores ? 'ON' : 'OFF'}
+        </Text>
+      </TouchableOpacity>
 
       {selectedSharer && (
         <SharerCard sharer={selectedSharer} onClose={() => setSelectedSharer(null)} />
@@ -157,7 +236,7 @@ export default function MapScreen() {
       {status !== 'offline' && (
         <View style={{
           position: 'absolute',
-          bottom: 80,
+          bottom: 40,
           left: 0,
           right: 0,
           alignItems: 'center',
@@ -181,7 +260,7 @@ export default function MapScreen() {
             <Text style={{ color: '#fff', fontWeight: '600', fontSize: 13 }}>
               {status === 'sharing'
                 ? `You are sharing — visible to others nearby`
-                : `You are needing — browse the map for sharers`}
+                : `You are fiending — browse the map for sharers`}
             </Text>
           </View>
         </View>

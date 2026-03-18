@@ -8,7 +8,7 @@ import { Product } from '@/types';
 const statusConfig = {
   offline: { label: 'Offline', color: 'bg-dark-400', textColor: 'text-gray-400' },
   sharing: { label: 'Sharing', color: 'bg-primary', textColor: 'text-white' },
-  needing: { label: 'Needing', color: 'bg-secondary', textColor: 'text-dark' },
+  needing: { label: 'Fiending', color: 'bg-secondary', textColor: 'text-dark' },
 };
 
 export function StatusFAB() {
@@ -89,7 +89,7 @@ export function StatusFAB() {
                       <Text className="text-gray-500 text-xs">
                         {s === 'offline' && 'You are invisible on the map'}
                         {s === 'sharing' && 'You appear on the map with your product'}
-                        {s === 'needing' && 'Browse the map for sharers'}
+                        {s === 'needing' && 'Browse the map for sharers nearby'}
                       </Text>
                     </View>
                   </TouchableOpacity>

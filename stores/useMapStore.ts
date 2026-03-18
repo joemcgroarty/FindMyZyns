@@ -26,13 +26,12 @@ export const useMapStore = create<MapState>((set, get) => ({
 
   fetchNearbySharers: async (lat, lng) => {
     const userId = useAuthStore.getState().session?.user?.id;
-    const { data } = await supabase.rpc('get_nearby_sharers', {
+    const { data, error } = await supabase.rpc('get_nearby_users', {
       user_lat: lat,
       user_lng: lng,
-      radius_meters: 5000,
+      radius_meters: 10000,
     });
     if (data) {
-      // Filter out self
       const filtered = (data as SharerPin[]).filter((s) => s.id !== userId);
       set({ nearbySharers: filtered });
     }

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, memo } from 'react';
 import { Platform } from 'react-native';
 import { SharerPin, StorePin } from '@/types';
 
@@ -28,7 +28,7 @@ interface WebMapProps {
   onRegionChange: (lat: number, lng: number) => void;
 }
 
-export function WebMap({
+export const WebMap = memo(function WebMap({
   latitude,
   longitude,
   sharers,
@@ -40,15 +40,25 @@ export function WebMap({
 }: WebMapProps) {
   const initialized = useRef(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastCenter = useRef<{ lat: number; lng: number } | null>(null);
 
   if (Platform.OS !== 'web') return null;
 
-  const sharerIcon = L.divIcon({
-    className: 'custom-marker',
-    html: '<div style="width:32px;height:32px;border-radius:50%;background:#10B981;border:3px solid #fff;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:14px;">Z</div>',
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-  });
+  function getUserIcon(userStatus: string, karma: number) {
+    const isSharing = userStatus === 'sharing';
+    const bg = isSharing ? '#10B981' : '#F59E0B';
+    const dot = karma < 0
+      ? '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:7px;height:7px;border-radius:50%;background:#EF4444;"></div>'
+      : karma > 0
+        ? '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:7px;height:7px;border-radius:50%;background:#10B981;"></div>'
+        : '';
+    return L.divIcon({
+      className: 'custom-marker',
+      html: `<div style="position:relative;width:18px;height:18px;"><div style="width:18px;height:18px;border-radius:50%;background:${bg};"></div>${dot}</div>`,
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+    });
+  }
 
   const youAreHereIcon = L.divIcon({
     className: 'custom-marker',
@@ -63,9 +73,9 @@ export function WebMap({
 
   const storeIcon = L.divIcon({
     className: 'custom-marker',
-    html: '<div style="width:28px;height:28px;border-radius:50%;background:#3B82F6;border:2px solid #93C5FD;display:flex;align-items:center;justify-content:center;font-size:12px;">\uD83D\uDECD\uFE0F</div>',
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
+    html: '<div style="width:10px;height:10px;border-radius:50%;background:#3B82F6;"></div>',
+    iconSize: [10, 10],
+    iconAnchor: [5, 5],
   });
 
   return (
@@ -74,7 +84,9 @@ export function WebMap({
       zoom={15}
       style={{ height: '100%', width: '100%' }}
       whenReady={(map: any) => {
-        // Skip the initial moveend that fires on map load
+        const c = map.target.getCenter();
+        lastCenter.current = { lat: c.lat, lng: c.lng };
+
         setTimeout(() => {
           initialized.current = true;
         }, 1000);
@@ -82,10 +94,17 @@ export function WebMap({
         map.target.on('moveend', () => {
           if (!initialized.current) return;
 
-          // Debounce region changes to prevent rapid re-renders
+          const center = map.target.getCenter();
+          // Only trigger if center moved more than ~500m (ignore pure zoom)
+          if (lastCenter.current) {
+            const dlat = Math.abs(center.lat - lastCenter.current.lat);
+            const dlng = Math.abs(center.lng - lastCenter.current.lng);
+            if (dlat < 0.005 && dlng < 0.005) return;
+          }
+          lastCenter.current = { lat: center.lat, lng: center.lng };
+
           if (debounceTimer.current) clearTimeout(debounceTimer.current);
           debounceTimer.current = setTimeout(() => {
-            const center = map.target.getCenter();
             onRegionChange(center.lat, center.lng);
           }, 500);
         });
@@ -105,7 +124,7 @@ export function WebMap({
         <Popup>
           <div style={{ color: '#fff', background: '#1A1A1A', padding: 8, borderRadius: 8 }}>
             <strong>You are here</strong>
-            {status !== 'offline' && <><br/>{status === 'sharing' ? 'Sharing — visible to others' : 'Needing — browsing for sharers'}</>}
+            {status !== 'offline' && <><br/>{status === 'sharing' ? 'Sharing — visible to others' : 'Fiending — browsing for sharers'}</>}
           </div>
         </Popup>
       </Marker>
@@ -114,13 +133,49 @@ export function WebMap({
         <Marker
           key={sharer.id}
           position={[sharer.latitude, sharer.longitude]}
-          icon={sharerIcon}
+          icon={getUserIcon(sharer.user_status || 'sharing', sharer.karma)}
           eventHandlers={{ click: () => onSharerPress(sharer) }}
         >
           <Popup>
-            <div style={{ color: '#fff', background: '#1A1A1A', padding: 8, borderRadius: 8 }}>
-              <strong>@{sharer.username}</strong><br/>
-              {sharer.product_name} · {sharer.karma} karma
+            <div style={{ color: '#000', padding: 4 }}>
+              <strong>@{sharer.username}</strong>
+              <span style={{ color: sharer.user_status === 'sharing' ? '#10B981' : '#F59E0B', marginLeft: 6, fontSize: 11 }}>
+                {sharer.user_status === 'sharing' ? 'Sharing' : 'Fiending'}
+              </span>
+              <span style={{
+                color: sharer.karma < 0 ? '#EF4444' : sharer.karma === 0 ? '#6B7280' : '#10B981',
+                marginLeft: 6,
+                fontSize: 11,
+                fontWeight: 'bold',
+              }}>
+                {sharer.karma < 0 ? 'Mooch' : sharer.karma === 0 ? 'Balanced' : 'Giver'}
+              </span>
+              <br/>
+              {sharer.product_name ? `${sharer.product_name} · ` : ''}{sharer.karma} karma
+              <br/>
+              <button
+                onClick={(e) => {
+                  const btn = e.currentTarget;
+                  btn.textContent = 'Sent ✓';
+                  btn.style.background = '#6B7280';
+                  btn.style.cursor = 'default';
+                  btn.disabled = true;
+                }}
+                style={{
+                  marginTop: 5,
+                  width: '100%',
+                  padding: '3px 0',
+                  border: 'none',
+                  borderRadius: 6,
+                  background: sharer.user_status === 'sharing' ? '#10B981' : '#F59E0B',
+                  color: '#fff',
+                  fontWeight: 'bold',
+                  fontSize: 11,
+                  cursor: 'pointer',
+                }}
+              >
+                {sharer.user_status === 'sharing' ? 'Request' : 'Offer'}
+              </button>
             </div>
           </Popup>
         </Marker>
@@ -134,13 +189,13 @@ export function WebMap({
           eventHandlers={{ click: () => onStorePress(store) }}
         >
           <Popup>
-            <div style={{ color: '#fff', background: '#1A1A1A', padding: 8, borderRadius: 8 }}>
+            <div style={{ color: '#000', padding: 4 }}>
               <strong>{store.name}</strong><br/>
-              {store.address}
+              <span style={{ fontSize: 11, color: '#666' }}>{store.address}</span>
             </div>
           </Popup>
         </Marker>
       ))}
     </MapContainer>
   );
-}
+});

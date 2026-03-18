@@ -7,6 +7,17 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   link.rel = 'stylesheet';
   link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
   document.head.appendChild(link);
+
+  // Custom popup styles
+  const style = document.createElement('style');
+  style.textContent = `
+    .leaflet-popup-content-wrapper { background: #fff !important; color: #000 !important; border-radius: 12px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important; border: none !important; padding: 0 !important; }
+    .leaflet-popup-content { margin: 10px 12px !important; font-size: 13px !important; line-height: 1.5 !important; }
+    .leaflet-popup-tip { background: #fff !important; }
+    .leaflet-popup-close-button { color: #999 !important; font-size: 18px !important; top: 4px !important; right: 6px !important; width: 20px !important; height: 20px !important; display: flex !important; align-items: center !important; justify-content: center !important; }
+    .custom-marker { background: none !important; border: none !important; }
+  `;
+  document.head.appendChild(style);
 }
 import { useEffect, useRef, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';

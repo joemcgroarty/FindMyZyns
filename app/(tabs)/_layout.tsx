@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { Text, Platform } from 'react-native';
 
 export default function TabLayout() {
   return (
@@ -9,16 +9,13 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: '#0A0A0A',
           borderTopColor: '#2A2A2A',
-          height: 85,
-          paddingBottom: 30,
-          paddingTop: 10,
+          height: Platform.OS === 'web' ? 60 : 85,
+          paddingBottom: Platform.OS === 'web' ? 8 : 30,
+          paddingTop: Platform.OS === 'web' ? 8 : 10,
         },
         tabBarActiveTintColor: '#10B981',
         tabBarInactiveTintColor: '#6B7280',
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '600',
-        },
+        tabBarShowLabel: false,
       }}
     >
       <Tabs.Screen
@@ -26,7 +23,16 @@ export default function TabLayout() {
         options={{
           title: 'Map',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>{'\uD83D\uDDFA\uFE0F'}</Text>
+            <Text style={{ color, fontSize: 22 }}>{'\uD83D\uDCCD'}</Text>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="leaderboard"
+        options={{
+          title: 'Leaderboard',
+          tabBarIcon: ({ color }) => (
+            <Text style={{ color, fontSize: 22 }}>{'\uD83C\uDFC6'}</Text>
           ),
         }}
       />
@@ -35,7 +41,7 @@ export default function TabLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>{'\uD83D\uDC64'}</Text>
+            <Text style={{ color, fontSize: 22 }}>{'\uD83D\uDE4D'}</Text>
           ),
         }}
       />
@@ -44,7 +50,7 @@ export default function TabLayout() {
         options={{
           title: 'Settings',
           tabBarIcon: ({ color }) => (
-            <Text style={{ color, fontSize: 20 }}>{'\u2699\uFE0F'}</Text>
+            <Text style={{ color, fontSize: 22 }}>{'\u2699\uFE0F'}</Text>
           ),
         }}
       />

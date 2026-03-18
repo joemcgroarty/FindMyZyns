@@ -66,6 +66,7 @@ export interface SharerPin {
   product_type: string;
   product_brand: string | null;
   distance_meters: number;
+  user_status?: 'sharing' | 'needing';
 }
 
 export interface StorePin {
@@ -78,23 +79,19 @@ export interface StorePin {
   is_open: boolean | null;
 }
 
-export type KarmaTier = 'newcomer' | 'neutral' | 'contributor' | 'generous' | 'legend';
+export type KarmaTier = 'mooch' | 'balanced' | 'giver';
 
 export function getKarmaTier(karma: number): KarmaTier {
-  if (karma < 0) return 'newcomer';
-  if (karma < 10) return 'neutral';
-  if (karma < 50) return 'contributor';
-  if (karma < 100) return 'generous';
-  return 'legend';
+  if (karma < 0) return 'mooch';
+  if (karma === 0) return 'balanced';
+  return 'giver';
 }
 
 export function getKarmaTierLabel(tier: KarmaTier): string {
   const labels: Record<KarmaTier, string> = {
-    newcomer: 'Newcomer',
-    neutral: 'Neutral',
-    contributor: 'Contributor',
-    generous: 'Generous',
-    legend: 'Legend',
+    mooch: 'Mooch',
+    balanced: 'Balanced',
+    giver: 'Giver',
   };
   return labels[tier];
 }

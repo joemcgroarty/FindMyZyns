@@ -17,7 +17,7 @@ const slides = [
     emoji: '\uD83E\uDD1D',
     title: 'Share & Connect',
     description:
-      'Set your status to Sharing when you have nicotine to share, or Needing when you want some. Connect with others on the map.',
+      'Set your status to Sharing when you have nicotine to share, or Fiending when you want some. Connect with others on the map.',
   },
   {
     emoji: '\u2B50',

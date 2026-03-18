@@ -41,6 +41,14 @@ export default function ProfileScreen() {
     fetchData().finally(() => setLoading(false));
   }, [fetchData]);
 
+  // Retry fetch if products came back empty (session may not have been ready)
+  useEffect(() => {
+    if (!loading && products.length === 0 && profile?.id) {
+      const timer = setTimeout(() => fetchData(), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, products.length, profile?.id]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await Promise.all([refreshProfile(), fetchData()]);
@@ -146,7 +154,7 @@ export default function ProfileScreen() {
 
       {/* Products header */}
       <View className="flex-row items-center justify-between mb-3">
-        <Text className="text-white text-lg font-bold">My Products</Text>
+        <Text className="text-white text-lg font-bold">My Stash</Text>
         <TouchableOpacity onPress={() => router.push('/product/new')} activeOpacity={0.7}>
           <Text className="text-primary text-base font-semibold">+ Add</Text>
         </TouchableOpacity>
@@ -166,7 +174,7 @@ export default function ProfileScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-dark">
+    <SafeAreaView className="flex-1 bg-dark" style={{ alignItems: 'center' }}>
       <FlatList
         data={products}
         renderItem={renderProduct}
@@ -174,6 +182,7 @@ export default function ProfileScreen() {
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={!loading ? EmptyProducts : null}
         contentContainerClassName="px-6 pb-8"
+        style={{ width: '100%', maxWidth: 480 } as any}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

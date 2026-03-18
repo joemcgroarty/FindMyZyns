@@ -18,11 +18,9 @@ export const colors = {
     500: '#6B7280',
   },
   karma: {
-    newcomer: '#EF4444',
-    neutral: '#6B7280',
-    contributor: '#C0C0C0',
-    generous: '#FFD700',
-    legend: '#60A5FA',
+    mooch: '#EF4444',
+    balanced: '#6B7280',
+    giver: '#10B981',
   },
 } as const;
 

@@ -74,8 +74,8 @@ export default function SettingsScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-dark">
-      <View className="flex-1 px-6 pt-4">
+    <SafeAreaView className="flex-1 bg-dark" style={{ alignItems: 'center' }}>
+      <View className="flex-1 px-6 pt-4" style={{ width: '100%', maxWidth: 480 } as any}>
         <Text className="text-white text-2xl font-bold mb-8">Settings</Text>
 
         <View className="bg-dark-100 rounded-xl p-4 mb-6">

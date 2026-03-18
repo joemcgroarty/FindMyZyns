@@ -44,10 +44,15 @@ export default function LoginScreen() {
         contentContainerStyle={{ flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
       >
-        <View className="flex-1 justify-center px-6">
-          <Text className="text-white text-3xl font-bold text-center mb-2">
-            FindMyZyns
-          </Text>
+        <View className="flex-1 justify-center" style={{ alignItems: 'center' }}>
+        <View style={{ width: '100%', maxWidth: 380, paddingHorizontal: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+            <Text style={{ color: '#10B981', fontSize: 40, fontWeight: '900', letterSpacing: 1, lineHeight: 48 }}>Find</Text>
+            <Text style={{ color: '#fff', fontSize: 40, fontWeight: '900', letterSpacing: 1, lineHeight: 48 }}>My</Text>
+            <View style={{ backgroundColor: '#10B981', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, marginLeft: 4, justifyContent: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 40, fontWeight: '900', letterSpacing: 3, lineHeight: 48 }}>ZYNS</Text>
+            </View>
+          </View>
           <Text className="text-gray-400 text-center mb-8">
             Welcome back
           </Text>
@@ -99,6 +104,7 @@ export default function LoginScreen() {
               <Text className="text-primary font-semibold">Sign Up</Text>
             </Link>
           </View>
+        </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
